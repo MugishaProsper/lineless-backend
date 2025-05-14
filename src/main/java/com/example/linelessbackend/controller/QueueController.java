@@ -1,76 +1,124 @@
 package com.example.linelessbackend.controller;
 
+import com.example.linelessbackend.dto.QueueDTO;
+import com.example.linelessbackend.dto.TokenDTO;
 import com.example.linelessbackend.model.Queue;
 import com.example.linelessbackend.model.Token;
 import com.example.linelessbackend.model.User;
 import com.example.linelessbackend.service.QueueService;
+import com.example.linelessbackend.service.UserService;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
-import java.util.Map;
+import java.util.stream.Collectors;
 
 @RestController
-@RequestMapping("/api/queues")
+@RequestMapping("/api")
 public class QueueController {
-    private final QueueService queueService;
 
-    public QueueController(QueueService queueService) {
-        this.queueService = queueService;
+    private static final Logger logger = LoggerFactory.getLogger(QueueController.class);
+
+    @Autowired
+    private QueueService queueService;
+
+    @Autowired
+    private UserService userService;
+
+    // User endpoints
+    @GetMapping("/queues")
+    public ResponseEntity<List<QueueDTO>> getAvailableQueues() {
+        return ResponseEntity.ok(queueService.getAvailableQueues());
     }
 
-    @PostMapping
-    public ResponseEntity<Queue> createQueue(@RequestBody Map<String, Object> request) {
-        String serviceName = (String) request.get("serviceName");
-        int estimatedTimePerToken = (int) request.get("estimatedTimePerToken");
-        Queue queue = queueService.createQueue(serviceName, estimatedTimePerToken);
-        return ResponseEntity.ok(queue);
+    // Super Admin endpoints
+    @GetMapping("/super-admin/queues")
+    public ResponseEntity<List<QueueDTO>> getAllQueues() {
+        return ResponseEntity.ok(queueService.getAllQueues());
     }
 
-    @GetMapping("/active")
-    public ResponseEntity<List<Queue>> getActiveQueues() {
-        List<Queue> queues = queueService.getActiveQueues();
-        return ResponseEntity.ok(queues);
+    @PostMapping("/super-admin/queues")
+    public ResponseEntity<QueueDTO> createQueueWithAdmin(@RequestBody QueueDTO queueDTO) {
+        return ResponseEntity.ok(queueService.createQueueWithAdmin(queueDTO));
     }
 
-    @PostMapping("/{queueId}/tokens")
-    public ResponseEntity<Token> issueToken(@PathVariable Long queueId, @AuthenticationPrincipal User user) {
+    @PutMapping("/super-admin/queues/{id}/admin")
+    public ResponseEntity<QueueDTO> assignAdminToQueue(@PathVariable Long id, @RequestBody Long adminId) {
+        return ResponseEntity.ok(queueService.assignAdminToQueue(id, adminId));
+    }
+
+    @DeleteMapping("/super-admin/queues/{id}")
+    public ResponseEntity<Void> deleteQueueAsSuperAdmin(@PathVariable Long id) {
+        queueService.deleteQueueAsSuperAdmin(id);
+        return ResponseEntity.ok().build();
+    }
+
+    @PostMapping("/queues/{queueId}/tokens")
+    @PreAuthorize("hasAnyRole('USER', 'ADMIN', 'SUPER_ADMIN')")
+    public ResponseEntity<TokenDTO> issueToken(@PathVariable Long queueId, Authentication authentication) {
+        String email = authentication.getName();
+        logger.info("Issuing token for user with email: {}", email);
+        User user = userService.getUserByEmail(email);
+        logger.info("Found user with ID: {}", user.getId());
         Token token = queueService.issueToken(queueId, user);
-        return ResponseEntity.ok(token);
+        logger.info("Created token with ID: {}", token.getId());
+        return ResponseEntity.ok(TokenDTO.fromToken(token));
     }
 
-    @PostMapping("/{queueId}/serve")
-    public ResponseEntity<Token> serveNextToken(@PathVariable Long queueId) {
+    @PostMapping("/queues/{queueId}/serve")
+    @PreAuthorize("hasAnyRole('ADMIN', 'SUPER_ADMIN')")
+    public ResponseEntity<TokenDTO> serveNextToken(@PathVariable Long queueId) {
         Token token = queueService.serveNextToken(queueId);
-        return ResponseEntity.ok(token);
+        return ResponseEntity.ok(TokenDTO.fromToken(token));
     }
 
-    @GetMapping("/{queueId}/tokens")
-    public ResponseEntity<List<Token>> getQueueTokens(@PathVariable Long queueId) {
+    @GetMapping("/queues/{queueId}/tokens")
+    @PreAuthorize("hasAnyRole('ADMIN', 'SUPER_ADMIN')")
+    public ResponseEntity<List<TokenDTO>> getQueueTokens(@PathVariable Long queueId) {
         List<Token> tokens = queueService.getQueueTokens(queueId);
-        return ResponseEntity.ok(tokens);
+        List<TokenDTO> tokenDTOs = tokens.stream()
+            .map(TokenDTO::fromToken)
+            .collect(Collectors.toList());
+        return ResponseEntity.ok(tokenDTOs);
     }
 
-    @GetMapping("/my-tokens")
-    public ResponseEntity<List<Token>> getUserTokens(@AuthenticationPrincipal User user) {
+    @GetMapping("/tokens/my-tokens")
+    @PreAuthorize("hasAnyRole('USER', 'ADMIN', 'SUPER_ADMIN')")
+    public ResponseEntity<List<TokenDTO>> getUserTokens(Authentication authentication) {
+        String email = authentication.getName();
+        logger.info("Getting tokens for user with email: {}", email);
+        User user = userService.getUserByEmail(email);
+        logger.info("Found user with ID: {}", user.getId());
         List<Token> tokens = queueService.getUserTokens(user.getId());
-        return ResponseEntity.ok(tokens);
+        logger.info("Found {} tokens for user", tokens.size());
+        List<TokenDTO> tokenDTOs = tokens.stream()
+            .map(TokenDTO::fromToken)
+            .collect(Collectors.toList());
+        return ResponseEntity.ok(tokenDTOs);
     }
 
     @PostMapping("/tokens/{tokenId}/cancel")
+    @PreAuthorize("hasAnyRole('USER', 'ADMIN', 'SUPER_ADMIN')")
     public ResponseEntity<Void> cancelToken(@PathVariable Long tokenId) {
         queueService.cancelToken(tokenId);
         return ResponseEntity.ok().build();
     }
 
     @PostMapping("/tokens/{tokenId}/skip")
+    @PreAuthorize("hasAnyRole('ADMIN', 'SUPER_ADMIN')")
     public ResponseEntity<Void> skipToken(@PathVariable Long tokenId) {
         queueService.skipToken(tokenId);
         return ResponseEntity.ok().build();
     }
 
-    @PostMapping("/{queueId}/close")
+    @PostMapping("/queues/{queueId}/close")
+    @PreAuthorize("hasAnyRole('ADMIN', 'SUPER_ADMIN')")
     public ResponseEntity<Void> closeQueue(@PathVariable Long queueId) {
         queueService.closeQueue(queueId);
         return ResponseEntity.ok().build();

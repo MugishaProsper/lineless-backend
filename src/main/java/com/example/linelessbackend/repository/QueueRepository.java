@@ -8,5 +8,7 @@ import java.util.List;
 
 @Repository
 public interface QueueRepository extends JpaRepository<Queue, Long> {
-    List<Queue> findByIsActive(boolean isActive);
+    List<Queue> findByIsActiveTrue();
+    List<Queue> findByAdminId(Long adminId);
+    List<Queue> findByCompanyId(Long companyId);
 } 

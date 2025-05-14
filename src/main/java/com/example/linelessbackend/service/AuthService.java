@@ -44,15 +44,22 @@ public class AuthService {
     }
 
     public Map<String, Object> loginUser(String email, String password) {
+        // Authenticate the user
         Authentication authentication = authenticationManager.authenticate(
                 new UsernamePasswordAuthenticationToken(email, password));
 
         SecurityContextHolder.getContext().setAuthentication(authentication);
-        String jwt = jwtUtils.generateToken((User) authentication.getPrincipal());
+        
+        // Get our custom User object from the repository
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+        
+        // Generate JWT token
+        String jwt = jwtUtils.generateToken(user);
 
         Map<String, Object> response = new HashMap<>();
         response.put("token", jwt);
-        response.put("user", authentication.getPrincipal());
+        response.put("user", user);
         return response;
     }
 } 

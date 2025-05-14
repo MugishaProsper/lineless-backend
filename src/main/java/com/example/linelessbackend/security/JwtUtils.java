@@ -1,5 +1,6 @@
 package com.example.linelessbackend.security;
 
+import com.example.linelessbackend.model.User;
 import io.jsonwebtoken.*;
 import io.jsonwebtoken.security.Keys;
 import org.springframework.beans.factory.annotation.Value;
@@ -37,7 +38,7 @@ public class JwtUtils {
         return claimsResolver.apply(claims);
     }
 
-    private Claims extractAllClaims(String token) {
+    public Claims extractAllClaims(String token) {
         return Jwts.parserBuilder()
                 .setSigningKey(getSigningKey())
                 .build()
@@ -49,9 +50,10 @@ public class JwtUtils {
         return extractExpiration(token).before(new Date());
     }
 
-    public String generateToken(UserDetails userDetails) {
+    public String generateToken(User user) {
         Map<String, Object> claims = new HashMap<>();
-        return createToken(claims, userDetails.getUsername());
+        claims.put("role", user.getRole().name());
+        return createToken(claims, user.getEmail());
     }
 
     private String createToken(Map<String, Object> claims, String subject) {
@@ -60,7 +62,7 @@ public class JwtUtils {
                 .setSubject(subject)
                 .setIssuedAt(new Date(System.currentTimeMillis()))
                 .setExpiration(new Date(System.currentTimeMillis() + expiration))
-                .signWith(getSigningKey())
+                .signWith(getSigningKey(), SignatureAlgorithm.HS256)
                 .compact();
     }
 
