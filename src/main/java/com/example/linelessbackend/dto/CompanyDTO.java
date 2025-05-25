@@ -1,55 +1,20 @@
-package com.example.linelessbackend.model;
+package com.example.linelessbackend.dto;
 
-import jakarta.persistence.*;
+import com.example.linelessbackend.model.Company;
 import java.time.LocalDateTime;
-import java.util.List;
-import java.util.HashSet;
-import java.util.Set;
 
-@Entity
-@Table(name = "companies")
-public class Company {
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
+public class CompanyDTO {
     private Long id;
-
-    @Column(nullable = false)
     private String name;
-
-    @Column(nullable = false, unique = true)
     private String code;
-
-    @Column
     private String description;
-
-    @Column
     private String address;
-
-    @Column
     private String contactEmail;
-
-    @Column
     private String contactPhone;
-
-    @Column(nullable = false)
-    private boolean active = true;
-
-    @Column(nullable = false)
+    private boolean active;
     private LocalDateTime createdAt;
-
-    @Column
     private LocalDateTime updatedAt;
-
-    @OneToMany(mappedBy = "company")
-    private List<Queue> queues;
-
-    @ManyToMany
-    @JoinTable(
-        name = "company_admins",
-        joinColumns = @JoinColumn(name = "company_id"),
-        inverseJoinColumns = @JoinColumn(name = "user_id")
-    )
-    private Set<User> admins = new HashSet<>();
+    private Long adminId;
 
     // Getters
     public Long getId() { return id; }
@@ -62,8 +27,7 @@ public class Company {
     public boolean isActive() { return active; }
     public LocalDateTime getCreatedAt() { return createdAt; }
     public LocalDateTime getUpdatedAt() { return updatedAt; }
-    public List<Queue> getQueues() { return queues; }
-    public Set<User> getAdmins() { return admins; }
+    public Long getAdminId() { return adminId; }
 
     // Setters
     public void setId(Long id) { this.id = id; }
@@ -76,21 +40,23 @@ public class Company {
     public void setActive(boolean active) { this.active = active; }
     public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }
     public void setUpdatedAt(LocalDateTime updatedAt) { this.updatedAt = updatedAt; }
-    public void setQueues(List<Queue> queues) { this.queues = queues; }
-    public void setAdmins(Set<User> admins) { this.admins = admins; }
+    public void setAdminId(Long adminId) { this.adminId = adminId; }
 
-    @PrePersist
-    protected void onCreate() {
-        createdAt = LocalDateTime.now();
-        updatedAt = LocalDateTime.now();
+    public static CompanyDTO fromCompany(Company company) {
+        CompanyDTO dto = new CompanyDTO();
+        dto.setId(company.getId());
+        dto.setName(company.getName());
+        dto.setCode(company.getCode());
+        dto.setDescription(company.getDescription());
+        dto.setAddress(company.getAddress());
+        dto.setContactEmail(company.getContactEmail());
+        dto.setContactPhone(company.getContactPhone());
+        dto.setActive(company.isActive());
+        dto.setCreatedAt(company.getCreatedAt());
+        dto.setUpdatedAt(company.getUpdatedAt());
+        if (company.getAdmins() != null) {
+            dto.setAdminId(company.getAdmins().getId());
+        }
+        return dto;
     }
-
-    @PreUpdate
-    protected void onUpdate() {
-        updatedAt = LocalDateTime.now();
-    }
-
-    public void addAdmin(User admin) {
-        admins.add(admin);
-    }
-}
+} 

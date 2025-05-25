@@ -2,6 +2,7 @@ package com.example.linelessbackend.controller;
 
 import com.example.linelessbackend.dto.QueueDTO;
 import com.example.linelessbackend.dto.TokenDTO;
+import com.example.linelessbackend.dto.UserDTO;
 import com.example.linelessbackend.model.Queue;
 import com.example.linelessbackend.model.Token;
 import com.example.linelessbackend.model.User;
@@ -64,9 +65,10 @@ public class QueueController {
     public ResponseEntity<TokenDTO> issueToken(@PathVariable Long queueId, Authentication authentication) {
         String email = authentication.getName();
         logger.info("Issuing token for user with email: {}", email);
-        User user = userService.getUserByEmail(email);
-        logger.info("Found user with ID: {}", user.getId());
-        Token token = queueService.issueToken(queueId, user);
+        UserDTO userDTO = userService.getUserByEmail(email)
+                .orElseThrow(() -> new RuntimeException("User not found with email: " + email));
+        logger.info("Found user with ID: {}", userDTO.getId());
+        Token token = queueService.issueToken(queueId, userDTO.getId());
         logger.info("Created token with ID: {}", token.getId());
         return ResponseEntity.ok(TokenDTO.fromToken(token));
     }
@@ -93,9 +95,10 @@ public class QueueController {
     public ResponseEntity<List<TokenDTO>> getUserTokens(Authentication authentication) {
         String email = authentication.getName();
         logger.info("Getting tokens for user with email: {}", email);
-        User user = userService.getUserByEmail(email);
-        logger.info("Found user with ID: {}", user.getId());
-        List<Token> tokens = queueService.getUserTokens(user.getId());
+        UserDTO userDTO = userService.getUserByEmail(email)
+                .orElseThrow(() -> new RuntimeException("User not found with email: " + email));
+        logger.info("Found user with ID: {}", userDTO.getId());
+        List<Token> tokens = queueService.getUserTokens(userDTO.getId());
         logger.info("Found {} tokens for user", tokens.size());
         List<TokenDTO> tokenDTOs = tokens.stream()
             .map(TokenDTO::fromToken)

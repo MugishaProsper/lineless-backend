@@ -236,7 +236,7 @@ public class QueueService {
 
     // Token management methods
     @Transactional
-    public Token issueToken(Long queueId, User user) {
+    public Token issueToken(Long queueId, Long userId) {
         Queue queue = queueRepository.findById(queueId)
                 .orElseThrow(() -> new ResourceNotFoundException("Queue not found"));
 
@@ -245,7 +245,7 @@ public class QueueService {
         }
 
         // Check for existing tokens
-        List<Token> existingTokens = tokenRepository.findByQueueIdAndUserId(queueId, user.getId());
+        List<Token> existingTokens = tokenRepository.findByQueueIdAndUserId(queueId, userId);
         long activeTokens = existingTokens.stream()
                 .filter(token -> token.getStatus() == Token.Status.WAITING || token.getStatus() == Token.Status.ACTIVE)
                 .count();
@@ -256,7 +256,7 @@ public class QueueService {
 
         Token token = new Token();
         token.setQueue(queue);
-        token.setUser(user);
+        token.setId(userId);
         token.setPosition((int) (tokenRepository.countByQueueId(queueId) + 1));
         token.setStatus(Token.Status.WAITING);
         token.setRequestedAt(LocalDateTime.now());
