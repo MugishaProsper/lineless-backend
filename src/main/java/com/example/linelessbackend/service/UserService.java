@@ -12,10 +12,12 @@ public interface UserService {
     List<UserDTO> getAllUsers();
     Optional<UserDTO> getUserById(Long id);
     Optional<UserDTO> getUserByEmail(String email);
-    UserDTO createUser(User user);
-    UserDTO updateUser(Long id, User user);
+    UserDTO createUser(UserDTO userDTO);
+    UserDTO updateUser(Long id, UserDTO userDTO);
     void deleteUser(Long id);
     UserDTO updateUserPreferences(Long id, Map<String, Object> preferences);
     void updateLastLogin(Long id);
+    UserDTO updateUserRole(Long userId, String newRole);
+    Map<String, Object> getSystemStats();
     AdminStatsDTO getAdminStats(Long adminId);
 }

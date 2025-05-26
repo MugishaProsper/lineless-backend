@@ -1,7 +1,11 @@
 package com.example.linelessbackend.dto;
 
 import com.example.linelessbackend.model.Company;
+import com.example.linelessbackend.model.User;
 import java.time.LocalDateTime;
+import java.util.HashSet;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 public class CompanyDTO {
     private Long id;
@@ -14,7 +18,7 @@ public class CompanyDTO {
     private boolean active;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
-    private Long adminId;
+    private Set<Long> adminIds = new HashSet<>();
 
     // Getters
     public Long getId() { return id; }
@@ -27,7 +31,7 @@ public class CompanyDTO {
     public boolean isActive() { return active; }
     public LocalDateTime getCreatedAt() { return createdAt; }
     public LocalDateTime getUpdatedAt() { return updatedAt; }
-    public Long getAdminId() { return adminId; }
+    public Set<Long> getAdminIds() { return adminIds; }
 
     // Setters
     public void setId(Long id) { this.id = id; }
@@ -40,7 +44,7 @@ public class CompanyDTO {
     public void setActive(boolean active) { this.active = active; }
     public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }
     public void setUpdatedAt(LocalDateTime updatedAt) { this.updatedAt = updatedAt; }
-    public void setAdminId(Long adminId) { this.adminId = adminId; }
+    public void setAdminIds(Set<Long> adminIds) { this.adminIds = adminIds; }
 
     public static CompanyDTO fromCompany(Company company) {
         CompanyDTO dto = new CompanyDTO();
@@ -54,8 +58,12 @@ public class CompanyDTO {
         dto.setActive(company.isActive());
         dto.setCreatedAt(company.getCreatedAt());
         dto.setUpdatedAt(company.getUpdatedAt());
+        
+        // Convert Set<User> to Set<Long> for admin IDs
         if (company.getAdmins() != null) {
-            dto.setAdminId(company.getAdmins().getId());
+            dto.setAdminIds(company.getAdmins().stream()
+                .map(User::getId)
+                .collect(Collectors.toSet()));
         }
         return dto;
     }

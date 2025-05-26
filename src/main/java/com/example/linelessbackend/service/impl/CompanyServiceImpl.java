@@ -2,6 +2,8 @@ package com.example.linelessbackend.service.impl;
 
 import com.example.linelessbackend.dto.CompanyDTO;
 import com.example.linelessbackend.dto.CompanyStatisticsDTO;
+import com.example.linelessbackend.dto.UserDTO;
+import com.example.linelessbackend.exception.ResourceNotFoundException;
 import com.example.linelessbackend.model.Company;
 import com.example.linelessbackend.model.Queue;
 import com.example.linelessbackend.model.Token;
@@ -31,23 +33,23 @@ public class CompanyServiceImpl implements CompanyService {
     public CompanyDTO createCompany(CompanyDTO companyDTO) {
         Company company = new Company();
         updateCompanyFromDTO(company, companyDTO);
-        return CompanyDTO.fromCompany(companyRepository.save(company));
+        return convertToDTO(companyRepository.save(company));
     }
 
     @Override
     @Transactional
     public CompanyDTO updateCompany(Long id, CompanyDTO companyDTO) {
         Company company = companyRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Company not found with id " + id));
+                .orElseThrow(() -> new ResourceNotFoundException("Company not found with id: " + id));
         updateCompanyFromDTO(company, companyDTO);
-        return CompanyDTO.fromCompany(companyRepository.save(company));
+        return convertToDTO(companyRepository.save(company));
     }
 
     @Override
     @Transactional(readOnly = true)
     public List<CompanyDTO> getAllCompanies() {
         return companyRepository.findAll().stream()
-                .map(CompanyDTO::fromCompany)
+                .map(this::convertToDTO)
                 .collect(Collectors.toList());
     }
 
@@ -55,15 +57,15 @@ public class CompanyServiceImpl implements CompanyService {
     @Transactional(readOnly = true)
     public CompanyDTO getCompany(Long id) {
         return companyRepository.findById(id)
-                .map(CompanyDTO::fromCompany)
-                .orElseThrow(() -> new RuntimeException("Company not found with id " + id));
+                .map(this::convertToDTO)
+                .orElseThrow(() -> new ResourceNotFoundException("Company not found with id: " + id));
     }
 
     @Override
     @Transactional
     public void deleteCompany(Long id) {
         Company company = companyRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Company not found with id " + id));
+                .orElseThrow(() -> new ResourceNotFoundException("Company not found with id: " + id));
         companyRepository.delete(company);
     }
 
@@ -71,34 +73,47 @@ public class CompanyServiceImpl implements CompanyService {
     @Transactional
     public CompanyDTO updateCompanySettings(Long id, CompanyDTO companyDTO) {
         Company company = companyRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Company not found with id " + id));
+                .orElseThrow(() -> new ResourceNotFoundException("Company not found with id: " + id));
         
         // Only update settings-related fields
         company.setDescription(companyDTO.getDescription());
         company.setContactEmail(companyDTO.getContactEmail());
         company.setContactPhone(companyDTO.getContactPhone());
         
-        return CompanyDTO.fromCompany(companyRepository.save(company));
+        return convertToDTO(companyRepository.save(company));
     }
 
     @Override
     @Transactional
-    public CompanyDTO assignAdmin(Long id, Long adminId) {
-        Company company = companyRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Company not found with id " + id));
+    public CompanyDTO assignAdmin(Long companyId, Long adminId) {
+        Company company = companyRepository.findById(companyId)
+                .orElseThrow(() -> new ResourceNotFoundException("Company not found with id: " + companyId));
         
         User admin = userRepository.findById(adminId)
-                .orElseThrow(() -> new RuntimeException("User not found with id " + adminId));
+                .orElseThrow(() -> new ResourceNotFoundException("User not found with id: " + adminId));
         
-        company.setAdmin(admin);
-        return CompanyDTO.fromCompany(companyRepository.save(company));
+        company.getAdmins().add(admin);
+        return convertToDTO(companyRepository.save(company));
+    }
+
+    @Override
+    @Transactional
+    public CompanyDTO removeAdmin(Long companyId, Long adminId) {
+        Company company = companyRepository.findById(companyId)
+                .orElseThrow(() -> new ResourceNotFoundException("Company not found with id: " + companyId));
+        
+        User admin = userRepository.findById(adminId)
+                .orElseThrow(() -> new ResourceNotFoundException("User not found with id: " + adminId));
+        
+        company.getAdmins().remove(admin);
+        return convertToDTO(companyRepository.save(company));
     }
 
     @Override
     @Transactional(readOnly = true)
     public CompanyStatisticsDTO getCompanyStatistics(Long id) {
         Company company = companyRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Company not found with id " + id));
+                .orElseThrow(() -> new ResourceNotFoundException("Company not found with id: " + id));
 
         CompanyStatisticsDTO stats = new CompanyStatisticsDTO();
         stats.setCompanyId(company.getId());
@@ -157,8 +172,27 @@ public class CompanyServiceImpl implements CompanyService {
 
     @Override
     public List<CompanyDTO> getCompaniesByAdmin(Long adminId) {
-        // TODO: Implement actual logic
-        return List.of();
+        User admin = userRepository.findById(adminId)
+                .orElseThrow(() -> new ResourceNotFoundException("User not found with id: " + adminId));
+        
+        return companyRepository.findByAdminsContaining(admin).stream()
+                .map(this::convertToDTO)
+                .collect(Collectors.toList());
+    }
+
+    private CompanyDTO convertToDTO(Company company) {
+        CompanyDTO dto = new CompanyDTO();
+        dto.setId(company.getId());
+        dto.setName(company.getName());
+        dto.setCode(company.getCode());
+        dto.setDescription(company.getDescription());
+        dto.setAddress(company.getAddress());
+        dto.setContactEmail(company.getContactEmail());
+        dto.setContactPhone(company.getContactPhone());
+        dto.setActive(company.isActive());
+        dto.setCreatedAt(company.getCreatedAt());
+        dto.setUpdatedAt(company.getUpdatedAt());
+        return dto;
     }
 
     private void updateCompanyFromDTO(Company company, CompanyDTO dto) {

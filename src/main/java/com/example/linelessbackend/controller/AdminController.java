@@ -1,10 +1,12 @@
 package com.example.linelessbackend.controller;
 
+import com.example.linelessbackend.dto.AdminStatsDTO;
+import com.example.linelessbackend.dto.CompanyDTO;
 import com.example.linelessbackend.dto.QueueDTO;
 import com.example.linelessbackend.dto.TokenDTO;
+import com.example.linelessbackend.dto.UserDTO;
 import com.example.linelessbackend.model.Company;
 import com.example.linelessbackend.model.Token;
-import com.example.linelessbackend.model.User;
 import com.example.linelessbackend.service.CompanyService;
 import com.example.linelessbackend.service.QueueService;
 import com.example.linelessbackend.service.TokenService;
@@ -12,12 +14,10 @@ import com.example.linelessbackend.service.UserService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
-import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 import java.util.Map;
-import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/api/admin")
@@ -38,23 +38,21 @@ public class AdminController {
 
     // Get the authenticated admin's companies
     @GetMapping("/companies")
-    public ResponseEntity<List<Company>> getMyCompanies(Authentication authentication) {
-        UserDetails userDetails = (UserDetails) authentication.getPrincipal();
-        User user = userService.findByEmail(userDetails.getUsername())
-                .orElseThrow(() -> new RuntimeException("User not found"));
-        
-        List<Company> companies = companyService.getCompaniesByAdmin(user.getId());
+    public ResponseEntity<List<CompanyDTO>> getAdminCompanies(Authentication authentication) {
+        String email = authentication.getName();
+        UserDTO userDTO = userService.getUserByEmail(email)
+                .orElseThrow(() -> new RuntimeException("User not found with email: " + email));
+        List<CompanyDTO> companies = companyService.getCompaniesByAdmin(userDTO.getId());
         return ResponseEntity.ok(companies);
     }
 
     // Get queues for the admin's companies
     @GetMapping("/queues")
     public ResponseEntity<List<QueueDTO>> getCompanyQueues(Authentication authentication) {
-        UserDetails userDetails = (UserDetails) authentication.getPrincipal();
-        User user = userService.findByEmail(userDetails.getUsername())
-                .orElseThrow(() -> new RuntimeException("User not found"));
-        
-        List<QueueDTO> queues = queueService.getQueuesByAdmin(user.getId());
+        String email = authentication.getName();
+        UserDTO userDTO = userService.getUserByEmail(email)
+                .orElseThrow(() -> new RuntimeException("User not found with email: " + email));
+        List<QueueDTO> queues = queueService.getQueuesByAdmin(userDTO.getId());
         return ResponseEntity.ok(queues);
     }
     
@@ -64,12 +62,12 @@ public class AdminController {
             @PathVariable Long companyId, 
             @RequestBody QueueDTO queueDTO,
             Authentication authentication) {
-        UserDetails userDetails = (UserDetails) authentication.getPrincipal();
-        User user = userService.findByEmail(userDetails.getUsername())
-                .orElseThrow(() -> new RuntimeException("User not found"));
+        String email = authentication.getName();
+        UserDTO userDTO = userService.getUserByEmail(email)
+                .orElseThrow(() -> new RuntimeException("User not found with email: " + email));
         
         // Validate that the admin belongs to the company
-        List<Company> adminCompanies = companyService.getCompaniesByAdmin(user.getId());
+        List<CompanyDTO> adminCompanies = companyService.getCompaniesByAdmin(userDTO.getId());
         boolean hasAccess = adminCompanies.stream()
                 .anyMatch(company -> company.getId().equals(companyId));
         
@@ -78,7 +76,7 @@ public class AdminController {
         }
         
         queueDTO.setCompanyId(companyId);
-        QueueDTO createdQueue = queueService.createQueue(queueDTO, user.getId());
+        QueueDTO createdQueue = queueService.createQueue(queueDTO, userDTO.getId());
         return ResponseEntity.ok(createdQueue);
     }
     
@@ -88,12 +86,12 @@ public class AdminController {
             @PathVariable Long queueId, 
             @RequestBody QueueDTO queueDTO,
             Authentication authentication) {
-        UserDetails userDetails = (UserDetails) authentication.getPrincipal();
-        User user = userService.findByEmail(userDetails.getUsername())
-                .orElseThrow(() -> new RuntimeException("User not found"));
+        String email = authentication.getName();
+        UserDTO userDTO = userService.getUserByEmail(email)
+                .orElseThrow(() -> new RuntimeException("User not found with email: " + email));
         
         // Validate the admin has access to this queue
-        boolean hasAccess = queueService.isQueueOwnedByAdmin(queueId, user.getId());
+        boolean hasAccess = queueService.isQueueOwnedByAdmin(queueId, userDTO.getId());
         if (!hasAccess) {
             return ResponseEntity.status(403).build();
         }
@@ -107,12 +105,12 @@ public class AdminController {
     public ResponseEntity<Void> deleteQueue(
             @PathVariable Long queueId,
             Authentication authentication) {
-        UserDetails userDetails = (UserDetails) authentication.getPrincipal();
-        User user = userService.findByEmail(userDetails.getUsername())
-                .orElseThrow(() -> new RuntimeException("User not found"));
+        String email = authentication.getName();
+        UserDTO userDTO = userService.getUserByEmail(email)
+                .orElseThrow(() -> new RuntimeException("User not found with email: " + email));
         
         // Validate the admin has access to this queue
-        boolean hasAccess = queueService.isQueueOwnedByAdmin(queueId, user.getId());
+        boolean hasAccess = queueService.isQueueOwnedByAdmin(queueId, userDTO.getId());
         if (!hasAccess) {
             return ResponseEntity.status(403).build();
         }
@@ -126,12 +124,12 @@ public class AdminController {
     public ResponseEntity<List<TokenDTO>> getQueueTokens(
             @PathVariable Long queueId,
             Authentication authentication) {
-        UserDetails userDetails = (UserDetails) authentication.getPrincipal();
-        User user = userService.findByEmail(userDetails.getUsername())
-                .orElseThrow(() -> new RuntimeException("User not found"));
+        String email = authentication.getName();
+        UserDTO userDTO = userService.getUserByEmail(email)
+                .orElseThrow(() -> new RuntimeException("User not found with email: " + email));
         
         // Validate the admin has access to this queue
-        boolean hasAccess = queueService.isQueueOwnedByAdmin(queueId, user.getId());
+        boolean hasAccess = queueService.isQueueOwnedByAdmin(queueId, userDTO.getId());
         if (!hasAccess) {
             return ResponseEntity.status(403).build();
         }
@@ -146,15 +144,15 @@ public class AdminController {
             @PathVariable Long tokenId,
             @RequestBody Map<String, String> request,
             Authentication authentication) {
-        UserDetails userDetails = (UserDetails) authentication.getPrincipal();
-        User user = userService.findByEmail(userDetails.getUsername())
-                .orElseThrow(() -> new RuntimeException("User not found"));
+        String email = authentication.getName();
+        UserDTO userDTO = userService.getUserByEmail(email)
+                .orElseThrow(() -> new RuntimeException("User not found with email: " + email));
         
         String status = request.get("status");
         Token.Status newStatus = Token.Status.valueOf(status.toUpperCase());
         
         // Validate the admin has access to this token
-        boolean hasAccess = tokenService.isTokenQueueOwnedByAdmin(tokenId, user.getId());
+        boolean hasAccess = tokenService.isTokenQueueOwnedByAdmin(tokenId, userDTO.getId());
         if (!hasAccess) {
             return ResponseEntity.status(403).build();
         }
@@ -164,19 +162,12 @@ public class AdminController {
     }
     
     // Get dashboard stats for the admin
-    @GetMapping("/dashboard")
-    public ResponseEntity<Map<String, Object>> getDashboardStats(Authentication authentication) {
-        UserDetails userDetails = (UserDetails) authentication.getPrincipal();
-        User user = userService.findByEmail(userDetails.getUsername())
-                .orElseThrow(() -> new RuntimeException("User not found"));
-        
-        Map<String, Object> stats = userService.getAdminStats(user.getId());
-        return ResponseEntity.ok(stats);
-    }
-    
-    // Alias for dashboard to support the stats endpoint used by the frontend
     @GetMapping("/stats")
-    public ResponseEntity<Map<String, Object>> getStats(Authentication authentication) {
-        return getDashboardStats(authentication);
+    public ResponseEntity<AdminStatsDTO> getAdminStats(Authentication authentication) {
+        String email = authentication.getName();
+        UserDTO userDTO = userService.getUserByEmail(email)
+                .orElseThrow(() -> new RuntimeException("User not found with email: " + email));
+        AdminStatsDTO stats = userService.getAdminStats(userDTO.getId());
+        return ResponseEntity.ok(stats);
     }
 }
