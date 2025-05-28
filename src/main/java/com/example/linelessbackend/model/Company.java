@@ -2,12 +2,19 @@ package com.example.linelessbackend.model;
 
 import jakarta.persistence.*;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.HashSet;
 import java.util.Set;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+import lombok.AllArgsConstructor;
 
 @Entity
 @Table(name = "companies")
+@Data
+@NoArgsConstructor
+@AllArgsConstructor
 public class Company {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -16,32 +23,23 @@ public class Company {
     @Column(nullable = false)
     private String name;
 
-    @Column(nullable = false, unique = true)
+    @Column(nullable = true)
     private String code;
 
-    @Column
+    @Column(nullable = true)
     private String description;
 
-    @Column
+    @Column(nullable = true)
     private String address;
 
-    @Column
+    @Column(name = "contact_email", nullable = true)
     private String contactEmail;
 
-    @Column
+    @Column(name = "contact_phone", nullable = true)
     private String contactPhone;
 
-    @Column(nullable = false)
-    private boolean active = true;
-
-    @Column(nullable = false)
-    private LocalDateTime createdAt;
-
-    @Column
-    private LocalDateTime updatedAt;
-
-    @OneToMany(mappedBy = "company")
-    private List<Queue> queues;
+    @Column(nullable = true)
+    private Boolean active = true;
 
     @ManyToMany
     @JoinTable(
@@ -51,6 +49,15 @@ public class Company {
     )
     private Set<User> admins = new HashSet<>();
 
+    @OneToMany(mappedBy = "company", cascade = CascadeType.ALL)
+    private List<Queue> queues = new ArrayList<>();
+
+    @Column(name = "created_at")
+    private LocalDateTime createdAt;
+
+    @Column(name = "updated_at")
+    private LocalDateTime updatedAt;
+
     // Getters
     public Long getId() { return id; }
     public String getName() { return name; }
@@ -59,7 +66,9 @@ public class Company {
     public String getAddress() { return address; }
     public String getContactEmail() { return contactEmail; }
     public String getContactPhone() { return contactPhone; }
-    public boolean isActive() { return active; }
+    public boolean isActive() { 
+        return active != null ? active : true; 
+    }
     public LocalDateTime getCreatedAt() { return createdAt; }
     public LocalDateTime getUpdatedAt() { return updatedAt; }
     public List<Queue> getQueues() { return queues; }

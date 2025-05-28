@@ -1,6 +1,6 @@
 package com.example.linelessbackend.controller;
 
-import com.example.linelessbackend.dto.StatisticsDTO;
+import com.example.linelessbackend.dto.AdminStatsDTO;
 import com.example.linelessbackend.dto.UserDTO;
 import com.example.linelessbackend.model.User;
 import com.example.linelessbackend.service.StatisticsService;
@@ -15,7 +15,7 @@ import java.util.List;
 import java.util.Map;
 
 @RestController
-@RequestMapping("/api/users")
+@RequestMapping({"/api/users", "/api/user"})
 public class UserController {
 
     private final UserService userService;
@@ -49,14 +49,14 @@ public class UserController {
 
     @PostMapping
     @PreAuthorize("hasRole('ADMIN') or hasRole('SUPER_ADMIN')")
-    public ResponseEntity<UserDTO> createUser(@RequestBody User user) {
-        return ResponseEntity.ok(userService.createUser(user));
+    public ResponseEntity<UserDTO> createUser(@RequestBody UserDTO userDTO) {
+        return ResponseEntity.ok(userService.createUser(userDTO));
     }
 
     @PutMapping("/{id}")
     @PreAuthorize("hasRole('ADMIN') or hasRole('SUPER_ADMIN') or @userService.getUserById(#id).get().email == authentication.principal.username")
-    public ResponseEntity<UserDTO> updateUser(@PathVariable Long id, @RequestBody User user) {
-        return ResponseEntity.ok(userService.updateUser(id, user));
+    public ResponseEntity<UserDTO> updateUser(@PathVariable Long id, @RequestBody UserDTO userDTO) {
+        return ResponseEntity.ok(userService.updateUser(id, userDTO));
     }
 
     @DeleteMapping("/{id}")
@@ -78,5 +78,49 @@ public class UserController {
     public ResponseEntity<Void> updateLastLogin(@PathVariable Long id) {
         userService.updateLastLogin(id);
         return ResponseEntity.ok().build();
+    }
+
+    @GetMapping("/me")
+    public ResponseEntity<UserDTO> getCurrentUser(Authentication authentication) {
+        String email = authentication.getName();
+        return userService.getUserByEmail(email)
+                .map(ResponseEntity::ok)
+                .orElse(ResponseEntity.notFound().build());
+    }
+
+    @PutMapping("/me")
+    public ResponseEntity<UserDTO> updateCurrentUser(
+            @RequestBody UserDTO userDTO,
+            Authentication authentication) {
+        String email = authentication.getName();
+        return userService.getUserByEmail(email)
+                .map(user -> {
+                    userDTO.setId(user.getId()); // Ensure we don't change the ID
+                    return ResponseEntity.ok(userService.updateUser(user.getId(), userDTO));
+                })
+                .orElse(ResponseEntity.notFound().build());
+    }
+
+    @PutMapping("/me/preferences")
+    public ResponseEntity<UserDTO> updateUserPreferences(
+            @RequestBody Map<String, Object> preferences,
+            Authentication authentication) {
+        String email = authentication.getName();
+        return userService.getUserByEmail(email)
+                .map(user -> ResponseEntity.ok(userService.updateUserPreferences(user.getId(), preferences)))
+                .orElse(ResponseEntity.notFound().build());
+    }
+
+    @GetMapping("/me/stats")
+    public ResponseEntity<AdminStatsDTO> getUserStats(Authentication authentication) {
+        String email = authentication.getName();
+        return userService.getUserByEmail(email)
+                .map(user -> ResponseEntity.ok(userService.getAdminStats(user.getId())))
+                .orElse(ResponseEntity.notFound().build());
+    }
+
+    @GetMapping("/stats")
+    public ResponseEntity<AdminStatsDTO> getUserStatsRedirect(Authentication authentication) {
+        return getUserStats(authentication);
     }
 } 

@@ -180,6 +180,17 @@ public class CompanyServiceImpl implements CompanyService {
                 .collect(Collectors.toList());
     }
 
+    @Override
+    @Transactional(readOnly = true)
+    public List<UserDTO> getCompanyAdmins(Long companyId) {
+        Company company = companyRepository.findById(companyId)
+                .orElseThrow(() -> new ResourceNotFoundException("Company not found with id: " + companyId));
+        
+        return company.getAdmins().stream()
+                .map(this::convertToUserDTO)
+                .collect(Collectors.toList());
+    }
+
     private CompanyDTO convertToDTO(Company company) {
         CompanyDTO dto = new CompanyDTO();
         dto.setId(company.getId());
@@ -203,5 +214,18 @@ public class CompanyServiceImpl implements CompanyService {
         company.setContactEmail(dto.getContactEmail());
         company.setContactPhone(dto.getContactPhone());
         company.setActive(dto.isActive());
+    }
+
+    private UserDTO convertToUserDTO(User user) {
+        UserDTO dto = new UserDTO();
+        dto.setId(user.getId());
+        dto.setName(user.getName());
+        dto.setEmail(user.getEmail());
+        dto.setRole(user.getRole().name());
+        dto.setLastLogin(user.getLastLogin());
+        dto.setCreatedAt(user.getCreatedAt());
+        dto.setUpdatedAt(user.getUpdatedAt());
+        dto.setPreferences(user.getPreferences());
+        return dto;
     }
 } 

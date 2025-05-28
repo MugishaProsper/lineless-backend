@@ -143,15 +143,15 @@ public class UserServiceImpl implements UserService {
 
     @Override
     @Transactional(readOnly = true)
-    public Map<String, Object> getAdminStats(Long adminId) {
+    public AdminStatsDTO getAdminStats(Long adminId) {
         User admin = userRepository.findById(adminId)
                 .orElseThrow(() -> new ResourceNotFoundException("User not found with id: " + adminId));
         
-        Map<String, Object> stats = new HashMap<>();
-        stats.put("adminId", admin.getId());
-        stats.put("adminName", admin.getUsername());
-        stats.put("adminEmail", admin.getEmail());
-        stats.put("lastLogin", admin.getLastLogin());
+        AdminStatsDTO stats = new AdminStatsDTO();
+        stats.setAdminId(admin.getId());
+        stats.setAdminName(admin.getName());
+        stats.setAdminEmail(admin.getEmail());
+        stats.setLastLogin(admin.getLastLogin());
         
         // Add more admin-specific statistics as needed
         
@@ -161,9 +161,9 @@ public class UserServiceImpl implements UserService {
     private UserDTO convertToDTO(User user) {
         UserDTO dto = new UserDTO();
         dto.setId(user.getId());
-        dto.setUsername(user.getUsername());
+        dto.setName(user.getName());
         dto.setEmail(user.getEmail());
-        dto.setRole(user.getRole());
+        dto.setRole(user.getRole().name());
         dto.setLastLogin(user.getLastLogin());
         dto.setCreatedAt(user.getCreatedAt());
         dto.setUpdatedAt(user.getUpdatedAt());
@@ -171,10 +171,10 @@ public class UserServiceImpl implements UserService {
     }
 
     private void updateUserFromDTO(User user, UserDTO dto) {
-        user.setUsername(dto.getUsername());
+        user.setName(dto.getName());
         user.setEmail(dto.getEmail());
         if (dto.getRole() != null) {
-            user.setRole(dto.getRole());
+            user.setRole(Role.valueOf(dto.getRole()));
         }
     }
 } 
